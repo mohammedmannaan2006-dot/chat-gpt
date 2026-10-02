@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Creovence — 3D PC Prototype</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f2;color:#171717}
+body{overflow-x:hidden}.page{height:420vh}.stage{position:fixed;inset:0;overflow:hidden;background:linear-gradient(135deg,#fafaf8 0%,#eeeeea 55%,#e7e7e3 100%)}
+.stage:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.95),transparent 48%),linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px),linear-gradient(rgba(0,0,0,.02) 1px,transparent 1px);background-size:auto,80px 80px;opacity:.55}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}.copy{position:absolute;z-index:2;inset:0;pointer-events:none;padding:clamp(28px,5vw,80px);display:flex;flex-direction:column;justify-content:space-between}.top{display:flex;justify-content:space-between;align-items:center}.brand{font-size:13px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}.label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#777}.hero{max-width:520px;margin-top:8vh}.hero h1{font-size:clamp(48px,8vw,112px);line-height:.9;letter-spacing:-.07em;margin:0;font-weight:650}.hero p{max-width:410px;color:#666;font-size:16px;line-height:1.6;margin-top:28px}.progress{position:absolute;right:32px;top:50%;transform:translateY(-50%);height:160px;width:2px;background:#d3d3ce}.bar{width:100%;height:0;background:#222}.hint{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#777}.stage-copy{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);text-align:center;opacity:0}.stage-copy strong{display:block;font-size:clamp(28px,4vw,58px);letter-spacing:-.04em}.stage-copy span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#777}.error{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);max-width:600px;text-align:center;background:#fff;padding:24px;border:1px solid #ddd;box-shadow:0 20px 60px rgba(0,0,0,.08);display:none}
+@media(max-width:700px){.hero p{font-size:14px}.progress{right:16px}.copy{padding:24px}.hero{margin-top:5vh}}
+</style>
+</head>
+<body>
+<div class="page"><div class="stage">
+<canvas id="scene"></canvas>
+<div class="copy">
+<div class="top"><div class="brand">CREOVENCE</div><div class="label">Interactive prototype / 01</div></div>
+<div class="hero"><h1>Built to<br>move.</h1><p>A real-time 3D product story. Scroll to move through the machine, from precision assembly to a controlled exploded view.</p></div>
+<div class="hint">Scroll to explore</div>
+</div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="stage-copy" id="stageCopy"><strong>Precision, separated.</strong><span>Every component follows your scroll.</span></div>
+<div class="error" id="error"></div>
+</div></div>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import {OrbitControls} from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
+import gsap from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/+esm";
+import {ScrollTrigger} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/ScrollTrigger/+esm";
+gsap.registerPlugin(ScrollTrigger);
+
+const canvas=document.querySelector("#scene"), error=document.querySelector("#error");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,innerWidth/innerHeight,.1,100); camera.position.set(4.8,3.2,7.5);
+const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.enableZoom=false; controls.enablePan=false; controls.autoRotate=false; controls.target.set(0,1.8,0); controls.enabled=false;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0xd9d9d3,2.5));
+const key=new THREE.DirectionalLight(0xffffff,4.2); key.position.set(5,8,6); scene.add(key);
+const fill=new THREE.DirectionalLight(0xe9f0ff,2); fill.position.set(-6,3,4); scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffffff,2); rim.position.set(1,4,-7); scene.add(rim);
+
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0xe5e5e1,roughness:.72,metalness:.05}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-.05; scene.add(floor);
+
+const root=new THREE.Group(); root.position.y=1.45; root.rotation.y=-.45; scene.add(root);
+const metal=new THREE.MeshStandardMaterial({color:0xbfc2c3,metalness:.85,roughness:.2});
+const dark=new THREE.MeshStandardMaterial({color:0x242628,metalness:.7,roughness:.24});
+const glass=new THREE.MeshPhysicalMaterial({color:0xdfe9ee,metalness:.05,roughness:.08,transmission:.35,transparent:true,opacity:.62});
+const board=new THREE.MeshStandardMaterial({color:0x6d7470,metalness:.2,roughness:.48});
+const accent=new THREE.MeshStandardMaterial({color:0x9fa5a4,metalness:.75,roughness:.18});
+
+const parts=[];
+function box(name,size,pos,mat,explode){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat); m.name=name; m.position.set(...pos); m.userData.base=m.position.clone(); m.userData.explode=new THREE.Vector3(...explode); root.add(m); parts.push(m); return m;
+}
+const body=box("Chassis",[2.45,4.4,1.25],[0,2.2,0],metal,[0,0,0]);
+const front=box("Front",[2.48,4.4,.08],[0,2.2,.67],dark,[0,0,1.4]);
+const back=box("Rear",[2.48,4.4,.08],[0,2.2,-.67],metal,[0,0,-1.4]);
+const panel=box("Glass Side",[.07,4.15,1.18],[1.27,2.2,0],glass,[1.5,.1,.1]);
+const boardM=box("Motherboard",[.12,2.75,.86],[-.95,2.25,0],board,[-1.8,.2,0]);
+const gpu=box("GPU",[.5,.72,2.0],[.05,1.55,.02],dark,[2.4,-.2,.4]);
+const psu=box("Power Supply",[1.7,.72,1.0],[-.1,.72,0],dark,[0,-1.8,-.3]);
+const cooler=box("Cooler",[1.15,.45,1.15],[-.1,3.25,.05],accent,[.2,1.9,.3]);
+const ram1=box("RAM 1",[.12,1.25,.16],[-.65,3.18,.22],accent,[-1.6,1.7,.8]);
+const ram2=box("RAM 2",[.12,1.25,.16],[-.43,3.18,.22],accent,[-1.2,2.0,.9]);
+const top=box("Top",[2.35,.08,1.18],[0,4.42,0],metal,[0,2.8,0]);
+
+// Subtle vents
+for(let i=-3;i<=3;i++){ const vent=new THREE.Mesh(new THREE.BoxGeometry(1.4,.025,.06),dark); vent.position.set(0,4.43,i*.14); top.add(vent); }
+
+const clock={value:0};
+gsap.to(clock,{value:1,ease:"none",scrollTrigger:{
+ trigger:".page",start:"top top",end:"bottom bottom",scrub:1,
+ onUpdate:self=>{
+   const p=self.progress;
+   document.querySelector("#bar").style.height=(p*100)+"%";
+   document.querySelector("#stageCopy").style.opacity=String(Math.max(0,(p-.58)/.22));
+   root.position.y=1.45+Math.sin(p*Math.PI)*.18;
+   root.rotation.y=-.45+p*.42;
+   camera.position.x=4.8+Math.sin(p*Math.PI)*1.2;
+   camera.position.y=3.2+Math.sin(p*Math.PI)*.45;
+   camera.position.z=7.5-p*.7;
+   parts.forEach(m=>{
+     const e=m.userData.explode;
+     const strength=gsap.utils.clamp(0,1,(p-.12)/.72);
+     const settle=gsap.utils.clamp(0,1,(p-.88)/.12);
+     const s=strength*(1-settle);
+     m.position.copy(m.userData.base).addScaledVector(e,s);
+     if(m.name==="Glass Side") m.rotation.y=.05*s;
+   });
+ }
+}});
+
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}
+animate();
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));ScrollTrigger.refresh()});
+</script>
+</body>
+</html>
