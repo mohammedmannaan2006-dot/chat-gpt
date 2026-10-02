@@ -75,10 +75,104 @@ const fill=new THREE.DirectionalLight(0xdfeaff,2.5);fill.position.set(-7,4,6);sc
 const rim=new THREE.DirectionalLight(0xffffff,3);rim.position.set(2,6,-8);scene.add(rim);
 
 const floor=new THREE.Mesh(
- new THREE.CircleGeometry(13,96),
- new THREE.MeshStandardMaterial({color:0xe7e7e2,roughness:.78,metalness:.02})
+ new THREE.PlaneGeometry(34,34),
+ new THREE.MeshStandardMaterial({color:0xe2e4e3,roughness:.7,metalness:.06})
 );
 floor.rotation.x=-Math.PI/2;floor.position.y=-2.5;scene.add(floor);
+
+// Architectural background: a real Three.js environment, not a flat image.
+const environment=new THREE.Group(); scene.add(environment);
+const wallMat=new THREE.MeshStandardMaterial({color:0xdfe2e1,roughness:.78,metalness:.08});
+const glassMat=new THREE.MeshPhysicalMaterial({color:0xbfd3dc,roughness:.12,metalness:.08,transmission:.18,transparent:true,opacity:.32});
+const frameMat=new THREE.MeshStandardMaterial({color:0x8c9394,roughness:.3,metalness:.75});
+const windowMat=new THREE.MeshStandardMaterial({color:0xb9d8e8,roughness:.25,metalness:.15,emissive:0x263f4a,emissiveIntensity:.18});
+
+// Large architectural wall / cyclorama
+const backWall=new THREE.Mesh(new THREE.PlaneGeometry(34,18),wallMat);
+backWall.position.set(0,5,-9); environment.add(backWall);
+const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(18,18),wallMat);
+leftWall.rotation.y=Math.PI/2;leftWall.position.set(-11,5,-1);environment.add(leftWall);
+const rightWall=leftWall.clone();rightWall.rotation.y=-Math.PI/2;rightWall.position.x=11;environment.add(rightWall);
+
+// Glass facade and vertical mullions behind the product
+for(let x=-9;x<=9;x+=1.8){
+ const pane=new THREE.Mesh(new THREE.PlaneGeometry(1.65,9.5),glassMat);
+ pane.position.set(x,2.4,-8.88);environment.add(pane);
+ const mullion=new THREE.Mesh(new THREE.BoxGeometry(.045,9.8,.08),frameMat);
+ mullion.position.set(x+.87,2.4,-8.72);environment.add(mullion);
+}
+for(let y=-1.6;y<=6.2;y+=1.55){
+ const beam=new THREE.Mesh(new THREE.BoxGeometry(19,.035,.08),frameMat);
+ beam.position.set(0,y,-8.72);environment.add(beam);
+}
+
+// Distant city silhouette visible through the facade
+const city=new THREE.Group();environment.add(city);
+const cityMats=[
+ new THREE.MeshStandardMaterial({color:0x9da7aa,roughness:.82,metalness:.05}),
+ new THREE.MeshStandardMaterial({color:0xb7bec0,roughness:.76,metalness:.06}),
+ new THREE.MeshStandardMaterial({color:0x7f898d,roughness:.82,metalness:.04})
+];
+for(let i=0;i<24;i++){
+ const x=-12+i*1.05;
+ const h=2.5+((i*37)%70)/10;
+ const w=.55+((i*13)%7)/20;
+ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,.7),cityMats[i%cityMats.length]);
+ b.position.set(x,-2.48+h/2,-11.5-(i%3)*.45);city.add(b);
+ // vertical glass/window strips
+ for(let j=0;j<Math.floor(h*1.5);j++){
+   if((i+j)%3!==0){
+    const win=new THREE.Mesh(new THREE.BoxGeometry(w*.42,.035,.025),windowMat);
+    win.position.set(x,-2.48+.45+j*.5,-11.12-(i%3)*.45);city.add(win);
+   }
+ }
+}
+
+// Foreground studio columns give the scene depth while keeping the PC dominant.
+for(const x of [-7.2,7.2]){
+ const col=new THREE.Mesh(new THREE.BoxGeometry(.22,10,.34),frameMat);
+ col.position.set(x,2.3,-4.8);environment.add(col);
+ const lightBar=new THREE.Mesh(
+  new THREE.BoxGeometry(.035,7,.045),
+  new THREE.MeshBasicMaterial({color:0xd7edf4})
+ );
+ lightBar.position.set(x+(x<0?.14:-.14),2.1,-4.55);environment.add(lightBar);
+}
+
+// Ceiling beams
+for(let z=-3;z>=-8;z-=1.65){
+ const beam=new THREE.Mesh(new THREE.BoxGeometry(19,.16,.18),frameMat);
+ beam.position.set(0,6.25,z);environment.add(beam);
+}
+
+// Floor architecture: long seams and a circular presentation platform
+const seamMat=new THREE.MeshBasicMaterial({color:0xb8bfbe});
+for(let x=-8;x<=8;x+=2){
+ const seam=new THREE.Mesh(new THREE.BoxGeometry(.012,.006,18),seamMat);
+ seam.position.set(x,-2.49,-1);environment.add(seam);
+}
+for(let z=-9;z<=7;z+=2){
+ const seam=new THREE.Mesh(new THREE.BoxGeometry(18,.006,.012),seamMat);
+ seam.position.set(0,-2.485,z);environment.add(seam);
+}
+const platform=new THREE.Mesh(
+ new THREE.CylinderGeometry(3.15,3.15,.08,96),
+ new THREE.MeshStandardMaterial({color:0xf2f3f1,roughness:.34,metalness:.12})
+);
+platform.position.set(0,-2.42,.2);environment.add(platform);
+const platformRing=new THREE.Mesh(
+ new THREE.TorusGeometry(3.0,.012,12,96),
+ new THREE.MeshBasicMaterial({color:0x9da5a6})
+);
+platformRing.rotation.x=Math.PI/2;platformRing.position.set(0,-2.36,.2);environment.add(platformRing);
+
+// Oversized architectural light disc behind the PC.
+const halo=new THREE.Mesh(
+ new THREE.TorusGeometry(4.2,.025,18,128),
+ new THREE.MeshBasicMaterial({color:0xd3e5ea,transparent:true,opacity:.75})
+);
+halo.position.set(0,1.0,-8.45);environment.add(halo);
+const halo2=halo.clone();halo2.scale.set(.78,.78,.78);halo2.material=halo.material.clone();halo2.material.opacity=.45;environment.add(halo2);
 
 const root=new THREE.Group();root.position.y=-1.15;root.rotation.y=-.42;scene.add(root);
 const parts=[];
@@ -97,7 +191,7 @@ function part(name,geo,pos,mat,explode,rot=[0,0,0]){
  root.add(m);parts.push(m);return m;
 }
 function box(name,s,pos,mat,e,r){return part(name,new THREE.BoxGeometry(...s),pos,mat,e,r)}
-function cyl(name,r,h,pos,mat,e,segments=48,r=[0,0,0]){return part(name,new THREE.CylinderGeometry(r,h,segments),pos,mat,e,r)}
+function cyl(name,rad,h,pos,mat,e,segments=48,rot=[0,0,0]){return part(name,new THREE.CylinderGeometry(rad,rad,h,segments),pos,mat,e,rot)}
 
 const chassis=box("Chassis",[3.05,5.35,1.7],[0,0,0],metal,[0,0,0]);
 const front=box("Front panel",[3.1,5.35,.08],[0,0,.88],dark,[0,0,1.75]);
@@ -143,7 +237,7 @@ for(let i=0;i<8;i++){
  const cable=box("Cable",[.07,.07,1.1],[-.45+(i%4)*.22,-.7+(i%2)*.25,.82],dark,[.4+(i%3)*.25,-.6+(i%2)*.5,1.8], [0,0,(i%2)*.5]);
 }
 
-const logo=new THREE.Mesh(new THREE.RingGeometry(.18,.23,48),new THREE.MeshBasicMaterial({color:0xeeeeee,side:THREE.DoubleSide}));
+const logo=new THREE.Mesh(new THREE.RingGeometry(.18,.23,48),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
 logo.rotation.x=Math.PI/2;logo.position.set(0,.1,.93);root.add(logo);
 
 const state={p:0};
