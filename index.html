@@ -67,7 +67,8 @@ renderer.toneMappingExposure=1.18;
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(30,innerWidth/innerHeight,.1,100);
-camera.position.set(5.7,3.7,9.5);
+camera.position.set(5.8,2.7,10.8);
+camera.lookAt(0.9,0,0);
 
 scene.add(new THREE.HemisphereLight(0xffffff,0xd5d5d0,2.7));
 const key=new THREE.DirectionalLight(0xffffff,5);key.position.set(5,9,7);scene.add(key);
@@ -76,15 +77,15 @@ const rim=new THREE.DirectionalLight(0xffffff,3);rim.position.set(2,6,-8);scene.
 
 const floor=new THREE.Mesh(
  new THREE.PlaneGeometry(34,34),
- new THREE.MeshStandardMaterial({color:0xe2e4e3,roughness:.7,metalness:.06})
+ new THREE.MeshStandardMaterial({color:0xe8e9e7,roughness:.78,metalness:.02})
 );
 floor.rotation.x=-Math.PI/2;floor.position.y=-2.5;scene.add(floor);
 
 // Architectural background: a real Three.js environment, not a flat image.
 const environment=new THREE.Group(); scene.add(environment);
 const wallMat=new THREE.MeshStandardMaterial({color:0xdfe2e1,roughness:.78,metalness:.08});
-const glassMat=new THREE.MeshPhysicalMaterial({color:0xbfd3dc,roughness:.12,metalness:.08,transmission:.18,transparent:true,opacity:.32});
-const frameMat=new THREE.MeshStandardMaterial({color:0x8c9394,roughness:.3,metalness:.75});
+const glassMat=new THREE.MeshPhysicalMaterial({color:0xd5e2e5,roughness:.2,metalness:.04,transmission:.12,transparent:true,opacity:.18});
+const frameMat=new THREE.MeshStandardMaterial({color:0xb1b7b7,roughness:.42,metalness:.55});
 const windowMat=new THREE.MeshStandardMaterial({color:0xb9d8e8,roughness:.25,metalness:.15,emissive:0x263f4a,emissiveIntensity:.18});
 
 // Large architectural wall / cyclorama
@@ -95,14 +96,14 @@ leftWall.rotation.y=Math.PI/2;leftWall.position.set(-11,5,-1);environment.add(le
 const rightWall=leftWall.clone();rightWall.rotation.y=-Math.PI/2;rightWall.position.x=11;environment.add(rightWall);
 
 // Glass facade and vertical mullions behind the product
-for(let x=-9;x<=9;x+=1.8){
+for(let x=-8;x<=8;x+=2.6){
  const pane=new THREE.Mesh(new THREE.PlaneGeometry(1.65,9.5),glassMat);
  pane.position.set(x,2.4,-8.88);environment.add(pane);
- const mullion=new THREE.Mesh(new THREE.BoxGeometry(.045,9.8,.08),frameMat);
+ const mullion=new THREE.Mesh(new THREE.BoxGeometry(.028,8.4,.06),frameMat);
  mullion.position.set(x+.87,2.4,-8.72);environment.add(mullion);
 }
-for(let y=-1.6;y<=6.2;y+=1.55){
- const beam=new THREE.Mesh(new THREE.BoxGeometry(19,.035,.08),frameMat);
+for(let y=-1.2;y<=5.2;y+=2.0){
+ const beam=new THREE.Mesh(new THREE.BoxGeometry(18,.025,.05),frameMat);
  beam.position.set(0,y,-8.72);environment.add(beam);
 }
 
@@ -129,8 +130,8 @@ for(let i=0;i<24;i++){
 }
 
 // Foreground studio columns give the scene depth while keeping the PC dominant.
-for(const x of [-7.2,7.2]){
- const col=new THREE.Mesh(new THREE.BoxGeometry(.22,10,.34),frameMat);
+for(const x of [-8.8,8.8]){
+ const col=new THREE.Mesh(new THREE.BoxGeometry(.12,8.5,.22),frameMat);
  col.position.set(x,2.3,-4.8);environment.add(col);
  const lightBar=new THREE.Mesh(
   new THREE.BoxGeometry(.035,7,.045),
@@ -140,8 +141,8 @@ for(const x of [-7.2,7.2]){
 }
 
 // Ceiling beams
-for(let z=-3;z>=-8;z-=1.65){
- const beam=new THREE.Mesh(new THREE.BoxGeometry(19,.16,.18),frameMat);
+for(let z=-5;z>=-8;z-=2.4){
+ const beam=new THREE.Mesh(new THREE.BoxGeometry(18,.09,.12),frameMat);
  beam.position.set(0,6.25,z);environment.add(beam);
 }
 
@@ -174,7 +175,11 @@ const halo=new THREE.Mesh(
 halo.position.set(0,1.0,-8.45);environment.add(halo);
 const halo2=halo.clone();halo2.scale.set(.78,.78,.78);halo2.material=halo.material.clone();halo2.material.opacity=.45;environment.add(halo2);
 
-const root=new THREE.Group();root.position.y=-1.15;root.rotation.y=-.42;scene.add(root);
+const root=new THREE.Group();
+root.position.set(1.35,0,0);
+root.rotation.y=-.42;
+root.scale.setScalar(1.05);
+scene.add(root);
 const parts=[];
 
 const metal=new THREE.MeshStandardMaterial({color:0xadb1b2,metalness:.92,roughness:.2});
@@ -252,12 +257,13 @@ ScrollTrigger.create({
   document.querySelector("#labelText").textContent=p<.42?"SYSTEM CORE":p<.65?"THERMAL + GRAPHICS":"EXPLODED ARCHITECTURE";
 
   const intro=gsap.utils.clamp(0,1,p/.16);
-  root.position.y=-1.15+Math.sin(p*Math.PI)*.22;
+  root.position.y=Math.sin(p*Math.PI)*.18;
   root.rotation.y=-.42+p*.5;
-  root.rotation.x=(p-.5)*.05;
-  camera.position.x=5.7+Math.sin(p*Math.PI)*1.1;
-  camera.position.y=3.7+Math.sin(p*Math.PI)*.35;
-  camera.position.z=9.5-p*.75;
+  root.rotation.x=(p-.5)*.035;
+  camera.position.x=5.8+Math.sin(p*Math.PI)*1.05;
+  camera.position.y=2.7+Math.sin(p*Math.PI)*.3;
+  camera.position.z=10.8-p*.65;
+  camera.lookAt(1.35,0,0);
 
   parts.forEach((m,i)=>{
    const e=m.userData.explode||new THREE.Vector3();
