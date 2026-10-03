@@ -21,7 +21,7 @@ video.ready{opacity:1}
 </head>
 <body>
 <section id="pin">
-<video id="hero" muted playsinline preload="auto" src="./dismantle.mp4"></video>
+<video id="hero" muted playsinline preload="auto" src="./dismantle-60fps-fixed.mp4"></video>
 <div class="shade"></div>
 <div class="ui">
 <div class="top"><div><div class="eyebrow">CREOVENCE / PC SYSTEM</div><div class="title">ENGINEERED<br>TO EXPLODE.</div><div class="desc">A cinematic scroll-controlled study of a gaming machine — driven frame by frame by your movement.</div></div><div class="status"><b id="phase">ASSEMBLED</b><div class="num" id="num">01 / 06</div></div></div>
@@ -29,24 +29,22 @@ video.ready{opacity:1}
 </div>
 <div class="progress"><i id="bar"></i></div>
 </section>
-
 <script type="module">
 import {gsap} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/index.js";
 import {ScrollTrigger} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/ScrollTrigger.js";
 gsap.registerPlugin(ScrollTrigger);
 const v=document.querySelector("#hero"),state={p:0},bar=document.querySelector("#bar");
-let targetTime=0, seeking=false;
+let targetTime=0,seeking=false;
 v.addEventListener("loadedmetadata",()=>{v.currentTime=0;v.classList.add("ready");});
 v.addEventListener("error",()=>{document.querySelector("#phase").textContent="VIDEO ERROR";});
 function update(){
- const p=Math.max(0,Math.min(1,state.p));
- bar.style.width=(p*100)+"%";
- if(v.readyState>=2&&Number.isFinite(v.duration)){ targetTime=p*v.duration; if(!seeking && Math.abs(v.currentTime-targetTime)>.01){seeking=true; v.currentTime=targetTime;} }
+ const p=Math.max(0,Math.min(1,state.p));bar.style.width=(p*100)+"%";
+ if(v.readyState>=2&&Number.isFinite(v.duration)){targetTime=p*v.duration;if(!seeking&&Math.abs(v.currentTime-targetTime)>.01){seeking=true;v.currentTime=targetTime;}}
  let d=p<.12?["ASSEMBLED","01 / 06","Complete system","Every frame follows the scroll position."]:p<.30?["REVEAL","02 / 06","The machine begins to open",""]:p<.48?["ARCHITECTURE","03 / 06","Internal systems in motion",""]:p<.66?["MACRO","04 / 06","Inside the machine",""]:p<.84?["RETURN","05 / 06","Pulling back to the hero",""]:["HERO","06 / 06","The finished machine","Scroll upward to reverse."];
  document.querySelector("#phase").textContent=d[0];document.querySelector("#num").textContent=d[1];document.querySelector("#caption").childNodes[0].nodeValue=d[2];
 }
 v.addEventListener("seeked",()=>{seeking=false;if(Math.abs(v.currentTime-targetTime)>.02)update();});
-const st=ScrollTrigger.create({trigger:"#pin",start:"top top",end:"+=850%",pin:true,scrub:true,onUpdate:self=>{state.p=self.progress;update();}});
+ScrollTrigger.create({trigger:"#pin",start:"top top",end:"+=850%",pin:true,scrub:true,onUpdate:self=>{state.p=self.progress;update();}});
 update();
 </script>
 </body>
