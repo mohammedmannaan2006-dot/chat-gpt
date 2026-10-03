@@ -2,12 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Creovence — Cinematic PC Scroll Demo</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;background:#050608;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}body{overflow-x:hidden}
-#pin{height:100vh;position:relative;overflow:hidden;background:#050608}
-video{position:absolute;width:100%;height:100%;inset:0;object-fit:cover;opacity:0;transform:scale(1.03);filter:saturate(.92) contrast(1.04)}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100%;background:#050608;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}
+body{overflow-x:hidden}
+#loader{position:fixed;inset:0;z-index:50;background:#050608;display:grid;place-items:center;padding:24px;transition:opacity .35s ease}
+.loaderBox{width:min(520px,100%);text-align:center}.loaderEyebrow{font-size:10px;letter-spacing:.24em;opacity:.55}.loaderTitle{font-size:clamp(28px,6vw,54px);letter-spacing:-.05em;margin:12px 0}.loaderStatus{font-size:12px;opacity:.65}.loaderTrack{height:2px;background:#ffffff18;margin-top:20px}.loaderBar{height:100%;width:0;background:#fff;transition:width .2s}
+#error{display:none;color:#fff;font-size:13px;line-height:1.6;margin-top:20px}.errorCode{opacity:.45;font-size:11px;margin-top:8px}
+#scrollSpace{height:850vh}
+#pin{height:100vh;width:100%;position:relative;overflow:hidden;background:#050608}
+video{position:absolute;width:100%;height:100%;inset:0;display:block;object-fit:cover;opacity:0;transform:scale(1.03);filter:saturate(.92) contrast(1.04);will-change:transform,opacity}
 video.ready{opacity:1}
 .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.62),transparent 48%,rgba(0,0,0,.15)),linear-gradient(0deg,rgba(0,0,0,.5),transparent 40%);pointer-events:none}
 .ui{position:absolute;inset:0;padding:30px 38px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
@@ -15,11 +21,21 @@ video.ready{opacity:1}
 .status{text-align:right}.status b{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}.num{font-size:10px;opacity:.5;margin-top:8px}
 .bottom{align-items:end}.hint{font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.55}.caption{font-size:13px;max-width:390px;text-align:right}.caption span{opacity:.5;display:block;font-size:11px;margin-top:7px}
 .progress{position:absolute;left:0;right:0;bottom:0;height:2px;background:#ffffff20}.progress i{display:block;width:0;height:100%;background:#fff}
-#scroll{height:850vh}
 @media(max-width:700px){.ui{padding:22px}.desc{display:none}.title{font-size:40px}.caption{max-width:240px}.status{font-size:9px}}
 </style>
 </head>
 <body>
+<div id="loader">
+  <div class="loaderBox">
+    <div class="loaderEyebrow">CREOVENCE / CINEMATIC PC SYSTEM</div>
+    <div class="loaderTitle">Loading machine</div>
+    <div class="loaderStatus" id="loaderStatus">Preparing video…</div>
+    <div class="loaderTrack"><div class="loaderBar" id="loaderBar"></div></div>
+    <div id="error"><strong>VIDEO COULD NOT LOAD</strong><br>Check that <b>dismantle-60fps-fixed.mp4</b> is in the repository root and that GitHub Pages has finished deploying.<div class="errorCode" id="errorCode"></div></div>
+  </div>
+</div>
+
+<div id="scrollSpace">
 <section id="pin">
 <video id="hero" muted playsinline preload="auto" src="./dismantle-60fps-fixed.mp4"></video>
 <div class="shade"></div>
@@ -29,23 +45,95 @@ video.ready{opacity:1}
 </div>
 <div class="progress"><i id="bar"></i></div>
 </section>
-<script type="module">
-import {gsap} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/index.js";
-import {ScrollTrigger} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/ScrollTrigger.js";
-gsap.registerPlugin(ScrollTrigger);
-const v=document.querySelector("#hero"),state={p:0},bar=document.querySelector("#bar");
-let targetTime=0,seeking=false;
-v.addEventListener("loadedmetadata",()=>{v.currentTime=0;v.classList.add("ready");});
-v.addEventListener("error",()=>{document.querySelector("#phase").textContent="VIDEO ERROR";});
-function update(){
- const p=Math.max(0,Math.min(1,state.p));bar.style.width=(p*100)+"%";
- if(v.readyState>=2&&Number.isFinite(v.duration)){targetTime=p*v.duration;if(!seeking&&Math.abs(v.currentTime-targetTime)>.01){seeking=true;v.currentTime=targetTime;}}
- let d=p<.12?["ASSEMBLED","01 / 06","Complete system","Every frame follows the scroll position."]:p<.30?["REVEAL","02 / 06","The machine begins to open",""]:p<.48?["ARCHITECTURE","03 / 06","Internal systems in motion",""]:p<.66?["MACRO","04 / 06","Inside the machine",""]:p<.84?["RETURN","05 / 06","Pulling back to the hero",""]:["HERO","06 / 06","The finished machine","Scroll upward to reverse."];
- document.querySelector("#phase").textContent=d[0];document.querySelector("#num").textContent=d[1];document.querySelector("#caption").childNodes[0].nodeValue=d[2];
+</div>
+
+<script>
+(function(){
+const v=document.getElementById("hero"),loader=document.getElementById("loader"),status=document.getElementById("loaderStatus"),loaderBar=document.getElementById("loaderBar"),error=document.getElementById("error"),errorCode=document.getElementById("errorCode"),bar=document.getElementById("bar"),phase=document.getElementById("phase"),num=document.getElementById("num"),caption=document.getElementById("caption");
+let duration=0,target=0,raf=0,lastSet=-1,ready=false;
+
+function fail(msg){status.textContent="Unable to load video";error.style.display="block";errorCode.textContent=msg||"Unknown media error";loaderBar.style.width="100%";}
+
+v.addEventListener("loadedmetadata",function(){
+ duration=v.duration;
+ if(!Number.isFinite(duration)||duration<=0){fail("Invalid video duration.");return;}
+ status.textContent="Video loaded — decoding frames…";
+ loaderBar.style.width="55%";
+ v.currentTime=0;
+});
+v.addEventListener("loadeddata",function(){loaderBar.style.width="75%";});
+v.addEventListener("canplay",function(){
+ if(ready)return;
+ ready=true;
+ loaderBar.style.width="100%";
+ status.textContent="Ready — scroll to control";
+ v.classList.add("ready");
+ setTimeout(function(){loader.style.opacity="0";setTimeout(function(){loader.style.display="none"},400)},250);
+});
+v.addEventListener("progress",function(){
+ if(v.buffered.length&&duration){const end=v.buffered.end(v.buffered.length-1);loaderBar.style.width=Math.max(55,Math.min(95,(end/duration)*100))+"%";}
+});
+v.addEventListener("error",function(){
+ const e=v.error;
+ fail(e ? "MediaError code "+e.code+" — the browser rejected or could not decode the MP4." : "No media error details were provided.");
+});
+
+function setUI(p){
+ bar.style.width=(p*100)+"%";
+ let d=p<.12?["ASSEMBLED","01 / 06","Complete system"]:p<.30?["REVEAL","02 / 06","The machine begins to open"]:p<.48?["ARCHITECTURE","03 / 06","Internal systems in motion"]:p<.66?["MACRO","04 / 06","Inside the machine"]:p<.84?["RETURN","05 / 06","Pulling back to the hero"]:["HERO","06 / 06","The finished machine"];
+ phase.textContent=d[0];num.textContent=d[1];caption.childNodes[0].nodeValue=d[2];
 }
-v.addEventListener("seeked",()=>{seeking=false;if(Math.abs(v.currentTime-targetTime)>.02)update();});
-ScrollTrigger.create({trigger:"#pin",start:"top top",end:"+=850%",pin:true,scrub:true,onUpdate:self=>{state.p=self.progress;update();}});
-update();
+function render(){
+ raf=0;
+ if(!ready||!duration)return;
+ const diff=Math.abs(v.currentTime-target);
+ if(diff>.003){
+   try{v.currentTime=target;}catch(e){}
+ }
+}
+function requestFrame(){if(!raf)raf=requestAnimationFrame(render);}
+
+function onScroll(){
+ const max=document.documentElement.scrollHeight-window.innerHeight;
+ const p=max>0?Math.max(0,Math.min(1,window.scrollY/max)):0;
+ target=p*duration;
+ setUI(p);
+ requestFrame();
+}
+window.addEventListener("scroll",onScroll,{passive:true});
+window.addEventListener("resize",onScroll);
+
+const s=document.createElement("script");
+s.src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js";
+s.onload=function(){
+ const t=document.createElement("script");
+ t.src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js";
+ t.onload=function(){
+   gsap.registerPlugin(ScrollTrigger);
+   ScrollTrigger.create({
+     trigger:"#pin",
+     start:"top top",
+     end:"+=850%",
+     pin:true,
+     scrub:0.05,
+     onUpdate:function(self){
+       const p=self.progress;
+       target=p*duration;
+       setUI(p);
+       requestFrame();
+     }
+   });
+   ScrollTrigger.refresh();
+   onScroll();
+ };
+ t.onerror=function(){console.warn("ScrollTrigger failed; native scroll fallback remains active.");};
+ document.head.appendChild(t);
+};
+s.onerror=function(){console.warn("GSAP failed; native scroll fallback remains active.");};
+document.head.appendChild(s);
+
+setUI(0);
+})();
 </script>
 </body>
 </html>
