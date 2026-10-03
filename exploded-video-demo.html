@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Creovence — Cinematic PC Scroll Demo</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#050608;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}body{overflow-x:hidden}
+#pin{height:100vh;position:relative;overflow:hidden;background:#050608}
+video{position:absolute;width:100%;height:100%;inset:0;object-fit:cover;opacity:0;transform:scale(1.03);filter:saturate(.92) contrast(1.04)}
+video.ready{opacity:1}
+.shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.62),transparent 48%,rgba(0,0,0,.15)),linear-gradient(0deg,rgba(0,0,0,.5),transparent 40%);pointer-events:none}
+.ui{position:absolute;inset:0;padding:30px 38px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.top,.bottom{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;opacity:.62}.title{font-size:clamp(32px,5.2vw,78px);line-height:.9;letter-spacing:-.065em;font-weight:500;margin-top:10px}.desc{font-size:12px;line-height:1.6;max-width:340px;opacity:.62;margin-top:18px}
+.status{text-align:right}.status b{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}.num{font-size:10px;opacity:.5;margin-top:8px}
+.bottom{align-items:end}.hint{font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.55}.caption{font-size:13px;max-width:390px;text-align:right}.caption span{opacity:.5;display:block;font-size:11px;margin-top:7px}
+.progress{position:absolute;left:0;right:0;bottom:0;height:2px;background:#ffffff20}.progress i{display:block;width:0;height:100%;background:#fff}
+#scroll{height:850vh}
+@media(max-width:700px){.ui{padding:22px}.desc{display:none}.title{font-size:40px}.caption{max-width:240px}.status{font-size:9px}}
+</style>
+</head>
+<body>
+<section id="pin">
+<video id="hero" muted playsinline preload="auto" src="dismantle-web.mp4"></video>
+<div class="shade"></div>
+<div class="ui">
+<div class="top"><div><div class="eyebrow">CREOVENCE / PC SYSTEM</div><div class="title">ENGINEERED<br>TO EXPLODE.</div><div class="desc">A cinematic scroll-controlled study of a gaming machine — driven frame by frame by your movement.</div></div><div class="status"><b id="phase">ASSEMBLED</b><div class="num" id="num">01 / 06</div></div></div>
+<div class="bottom"><div class="hint">SCROLL TO CONTROL THE MACHINE ↓</div><div class="caption" id="caption">Complete system<span>Every frame follows the scroll position.</span></div></div>
+</div>
+<div class="progress"><i id="bar"></i></div>
+</section>
+<div id="scroll"></div>
+<script type="module">
+import {gsap} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/index.js";
+import {ScrollTrigger} from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/ScrollTrigger.js";
+gsap.registerPlugin(ScrollTrigger);
+const v=document.querySelector("#hero"),state={p:0};
+v.addEventListener("loadedmetadata",()=>{v.currentTime=0;v.classList.add("ready");});
+function update(){
+const p=Math.max(0,Math.min(1,state.p));
+if(v.readyState>=2&&Number.isFinite(v.duration))v.currentTime=p*v.duration;
+document.querySelector("#bar").style.width=(p*100)+"%";
+let d=p<.12?["ASSEMBLED","01 / 06","Complete system","Every frame follows the scroll position."]:p<.30?["REVEAL","02 / 06","The machine begins to open",""]:p<.48?["ARCHITECTURE","03 / 06","Internal systems in motion",""]:p<.66?["MACRO","04 / 06","Inside the machine",""]:p<.84?["RETURN","05 / 06","Pulling back to the hero",""]:["HERO","06 / 06","The finished machine","Scroll upward to reverse."];
+document.querySelector("#phase").textContent=d[0];document.querySelector("#num").textContent=d[1];document.querySelector("#caption").childNodes[0].nodeValue=d[2];
+}
+gsap.to(state,{p:1,ease:"none",scrollTrigger:{trigger:"#scroll",start:"top top",end:"bottom bottom",scrub:true,onUpdate:update}});
+update();
+</script>
+</body>
+</html>
