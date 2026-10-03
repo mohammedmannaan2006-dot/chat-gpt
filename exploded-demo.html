@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Creovence — Exploded PC Demo</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#05070a;color:#fff;font-family:Inter,system-ui,sans-serif}
+body{min-height:100vh}#stage{height:100vh;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%}.hud{position:absolute;inset:0;pointer-events:none;padding:28px 32px;display:flex;justify-content:space-between;align-items:flex-start}
+.kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.55}.title{font-size:clamp(22px,3vw,44px);font-weight:500;margin-top:8px;letter-spacing:-.04em}.hint{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.5;white-space:nowrap}
+.progress{width:90px;height:2px;background:#ffffff22;margin-top:12px}.bar{height:100%;width:0;background:#dff8ff}.label{font-size:12px;opacity:.65;text-align:right}
+#scroll{height:650vh}.tag{position:absolute;right:32px;bottom:32px;font-size:10px;letter-spacing:.14em;opacity:.35;text-transform:uppercase}
+</style>
+</head>
+<body>
+<section id="stage">
+<canvas id="c"></canvas>
+<div class="hud"><div><div class="kicker">CREOVENCE / MOTION PROOF</div><div class="title">PC // EXPLODED VIEW</div></div><div><div class="label" id="phase">ASSEMBLED</div><div class="progress"><div class="bar" id="bar"></div></div></div></div>
+<div class="hint">SCROLL TO DISASSEMBLE · SCROLL UP TO REASSEMBLE</div><div class="tag">10s reference choreography · demo</div>
+</section>
+<div id="scroll"></div>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { gsap } from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/index.js";
+import { ScrollTrigger } from "https://cdn.jsdelivr.net/npm/gsap@3.13.0/ScrollTrigger.js";
+gsap.registerPlugin(ScrollTrigger);
+
+const canvas=document.querySelector("#c"), scene=new THREE.Scene();
+scene.background=new THREE.Color(0x05070a);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);
+camera.position.set(7,4.8,10); camera.lookAt(0,1.8,0);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+
+scene.add(new THREE.HemisphereLight(0xcfe8ff,0x111318,2.2));
+const key=new THREE.DirectionalLight(0xffffff,5); key.position.set(5,9,7); key.castShadow=true; scene.add(key);
+const rim=new THREE.PointLight(0x76cfff,22,16); rim.position.set(-5,4,3); scene.add(rim);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x10151b,roughness:.55,metalness:.25}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-.08; floor.receiveShadow=true; scene.add(floor);
+
+const root=new THREE.Group(); root.position.y=.25; scene.add(root);
+const parts={}; const base={};
+
+function mat(color,metal=.5,rough=.28,emissive=0x000000){return new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough,emissive,emissiveIntensity:emissive?2.5:0,transparent:true})}
+const dark=mat(0x171b20,.85,.2), black=mat(0x080b0e,.7,.25), board=mat(0x14231f,.25,.45), silver=mat(0x68737b,.85,.2), glass=new THREE.MeshPhysicalMaterial({color:0x91c8df,metalness:.05,roughness:.08,transmission:.22,transparent:true,opacity:.28,thickness:.04});
+const glow=mat(0xd7f7ff,.3,.2,0x62cfff);
+
+function box(name,s,p,m=dark){const o=new THREE.Mesh(new THREE.BoxGeometry(...s),m);o.position.set(...p);o.castShadow=true;o.receiveShadow=true;o.name=name;root.add(o);parts[name]=o;return o}
+function cyl(name,r,h,p,m=dark){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,32),m);o.position.set(...p);o.castShadow=true;o.name=name;root.add(o);parts[name]=o;return o}
+function fan(name,p,r=.55){const g=new THREE.Group();g.position.set(...p);const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.055,10,48),glow);g.add(ring);for(let i=0;i<7;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(r*.72,.045,.13),silver);b.rotation.z=i*Math.PI/3.5;b.position.x=Math.cos(i*Math.PI/3.5)*.22;b.position.y=Math.sin(i*Math.PI/3.5)*.22;g.add(b)}g.name=name;root.add(g);parts[name]=g;return g}
+
+box("Case",[4.9,6.8,2.0],[0,3.0,0],dark);
+box("Interior",[4.25,5.9,.18],[0,3.05,-.92],black);
+box("Motherboard",[3.35,4.7,.16],[.15,3.05,-1.05],board);
+for(let i=0;i<4;i++)box("RAM"+i,[.22,2.1,.18],[1.15+i*.32,4.05,-1.18],glow);
+box("GPU",[3.55,.72,1.25],[-.15,2.45,-1.38],silver);
+for(let i=0;i<3;i++)fan("GPUFan"+i,[-1.25+i*1.05,2.45,-2.02],.34);
+box("PSU",[3.55,1.0,1.55],[0,.72,-1.0],black);
+box("Radiator",[3.7,.22,.75],[0,5.75,-1.05],silver);
+for(let i=0;i<3;i++)fan("TopFan"+i,[-1.25+i*1.25,5.72,-1.35],.36);
+for(let i=0;i<3;i++)fan("FrontFan"+i,[2.0,2.0+i*1.45,-1.12],.48);
+fan("RearFan",[-2.0,4.6,-1.15],.48);
+const cooler=cyl("Cooler",.48,.25,[.05,4.35,-1.38],silver);
+const cpu=cyl("CPU",.27,.1,[.05,4.33,-1.52],glow);
+const glassObj=new THREE.Mesh(new THREE.BoxGeometry(4.75,6.55,.055),glass);glassObj.position.set(-2.53,3.0,0);glassObj.name="Glass";root.add(glassObj);parts.Glass=glassObj;
+
+Object.values(parts).forEach(o=>{base[o.name]={p:o.position.clone(),r:o.rotation.clone(),s:o.scale.clone()}});
+
+function setPart(n, x,y,z, rx=0,ry=0,rz=0){const o=parts[n]; if(!o)return; o.position.set(base[n].p.x+x,base[n].p.y+y,base[n].p.z+z);o.rotation.set(rx,ry,rz)}
+function resetPart(n){const o=parts[n],b=base[n];o.position.copy(b.p);o.rotation.copy(b.r);o.scale.copy(b.s)}
+function explode(progress){
+const p=progress;
+Object.keys(parts).forEach(resetPart);
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+let t;
+t=Math.min(1,Math.max(0,(p-.08)/.18)); t=ease(t);
+setPart("Glass",-2.5*t,0,.15*t,0,-.08*t,0);
+t=ease(Math.min(1,Math.max(0,(p-.22)/.2)));
+setPart("GPU",-3.0*t,0,.3*t,0,.04*t,0);
+["GPUFan0","GPUFan1","GPUFan2"].forEach((n,i)=>setPart(n,-3.0*t,0,.3*t));
+t=ease(Math.min(1,Math.max(0,(p-.36)/.18)));
+setPart("Radiator",0,1.5*t,.1*t);
+["TopFan0","TopFan1","TopFan2"].forEach(n=>setPart(n,0,1.5*t,.1*t));
+setPart("Cooler",0,1.0*t,.2*t);setPart("CPU",0,1.0*t,.2*t);
+t=ease(Math.min(1,Math.max(0,(p-.48)/.18)));
+setPart("Motherboard",0,-.15*t,-2.2*t,0,.06*t,0);
+for(let i=0;i<4;i++)setPart("RAM"+i,0,1.15*t,-1.4*t);
+t=ease(Math.min(1,Math.max(0,(p-.62)/.18)));
+setPart("PSU",0,-1.2*t,-.2*t);
+["FrontFan0","FrontFan1","FrontFan2"].forEach((n,i)=>setPart(n,.8*t,0,.9*t));
+setPart("RearFan",-1.2*t,0,.8*t);
+if(p>.55&&p<.84){const q=(p-.55)/.29;camera.position.set(7-5.2*q,4.8-2.0*q,10-5.0*q);camera.lookAt(.1,3.0-1.2*q,-.8);}
+else if(p>=.84){const q=Math.min(1,(p-.84)/.16);camera.position.set(1.8+5.2*q,2.8+2*q,5+5*q);camera.lookAt(0,3.2,0);}
+else{camera.position.set(7,4.8,10);camera.lookAt(0,3,0);}
+document.querySelector("#bar").style.width=(p*100)+"%";
+document.querySelector("#phase").textContent=p<.08?"ASSEMBLED":p<.22?"GLASS":p<.36?"GPU":p<.55?"COOLING":p<.72?"MOTHERBOARD":p<.84?"CPU / MACRO":"EXPLODED";
+}
+const state={p:0};
+gsap.to(state,{p:1,ease:"none",scrollTrigger:{trigger:"#scroll",start:"top top",end:"bottom bottom",scrub:true,onUpdate:s=>explode(state.p)}});
+explode(0);
+function tick(){requestAnimationFrame(tick);Object.values(parts).forEach(o=>{if(o.name&&o.name.includes("Fan"))o.rotation.z+=.012});renderer.render(scene,camera)}tick();
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
