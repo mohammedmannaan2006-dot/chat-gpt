@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Creovence — Flow Scroll Study</title>
+<style>
+:root{--ink:#101214;--muted:#6d7378;--line:rgba(16,18,20,.14);--paper:#f6f6f2}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+#intro{height:120vh;background:var(--paper)}
+#stage{height:100vh;position:relative;overflow:hidden;background:#eef0ed}
+#pin{height:100vh;position:relative;overflow:hidden}
+#hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;opacity:0;transform:scale(1.015);will-change:transform,opacity}
+#hero.ready{opacity:1}
+.backdrop{position:absolute;inset:0;pointer-events:none}
+.backdrop:before{content:"";position:absolute;inset:3.5vw;border:1px solid rgba(20,24,25,.22)}
+.backdrop:after{content:"";position:absolute;left:3.5vw;right:3.5vw;top:50%;height:1px;background:rgba(20,24,25,.10)}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.055;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E")}
+.ui{position:absolute;inset:0;padding:28px 34px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.row{display:flex;justify-content:space-between;gap:24px}
+.kicker{font-size:10px;letter-spacing:.25em;text-transform:uppercase}
+.title{font-size:clamp(34px,5.8vw,88px);line-height:.86;letter-spacing:-.07em;margin-top:12px;font-weight:520}
+.copy{max-width:330px;font-size:12px;line-height:1.55;color:var(--muted);margin-top:18px}
+.meta{text-align:right;font-size:10px;letter-spacing:.17em;text-transform:uppercase}
+.meta strong{display:block;font-size:11px;font-weight:500;margin-bottom:7px}
+.bottom{align-items:end}
+.hint{font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.caption{text-align:right;font-size:12px}
+.caption small{display:block;color:var(--muted);margin-top:6px;font-size:10px}
+.progress{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(16,18,20,.14)}
+.progress i{display:block;width:0;height:100%;background:#101214}
+#loader{position:fixed;inset:0;z-index:20;background:var(--paper);display:grid;place-items:center;transition:opacity .4s}
+.loader{text-align:center}
+.loader .kicker{color:var(--muted)}
+.loader h1{font-size:clamp(28px,5vw,64px);letter-spacing:-.06em;margin:12px 0}
+.loader p{color:var(--muted);font-size:12px}
+@media(max-width:700px){
+ .ui{padding:20px}.copy{display:none}.title{font-size:43px}
+ .backdrop:before{inset:20px}.backdrop:after{left:20px;right:20px}
+ .meta{font-size:8px}.caption{max-width:190px}
+}
+</style>
+</head>
+<body>
+<div id="loader"><div class="loader"><div class="kicker">CREOVENCE / FLOW STUDY</div><h1>Loading machine</h1><p id="loadText">Preparing cinematic sequence…</p></div></div>
+
+<section id="intro"></section>
+
+<section id="stage">
+ <div id="pin">
+  <video id="hero" muted playsinline preload="auto" src="./flow-pc.mp4"></video>
+  <div class="backdrop"></div>
+  <div class="grain"></div>
+  <div class="ui">
+   <div class="row">
+    <div>
+     <div class="kicker">CREOVENCE / PC SYSTEM</div>
+     <div class="title">ENGINEERED<br>TO EXPLODE.</div>
+     <div class="copy">A cinematic product sequence translated into a scroll-controlled experience. Your scroll position becomes the timeline.</div>
+    </div>
+    <div class="meta"><strong id="phase">ASSEMBLED</strong><span id="counter">01 / 07</span></div>
+   </div>
+   <div class="row bottom">
+    <div class="hint">SCROLL TO CONTROL ↓</div>
+    <div class="caption" id="caption">Complete system<small>Every movement follows the scroll position.</small></div>
+   </div>
+  </div>
+  <div class="progress"><i id="progress"></i></div>
+ </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script>
+(() => {
+ const video=document.querySelector("#hero");
+ const loader=document.querySelector("#loader");
+ const loadText=document.querySelector("#loadText");
+ const phase=document.querySelector("#phase");
+ const counter=document.querySelector("#counter");
+ const caption=document.querySelector("#caption");
+ const progress=document.querySelector("#progress");
+ let duration=0,targetTime=0,smoothTime=0,ready=false;
+
+ const phases=[
+  [0.00,"ASSEMBLED","01 / 07","Complete gaming system"],
+  [0.12,"LIFT","02 / 07","The machine leaves the desk"],
+  [0.28,"ISOLATED","03 / 07","Hero product reveal"],
+  [0.43,"EXPLODED","04 / 07","Precision component separation"],
+  [0.62,"MACRO","05 / 07","Inside the CPU"],
+  [0.79,"REVEAL","06 / 07","Returning to the machine"],
+  [0.91,"FINAL ASSEMBLY","07 / 07","Complete exploded system"]
+ ];
+
+ function updateUI(p){
+  progress.style.width=(p*100)+"%";
+  let active=phases[0];
+  for(const item of phases) if(p>=item[0]) active=item;
+  phase.textContent=active[1];
+  counter.textContent=active[2];
+  caption.firstChild.nodeValue=active[3];
+ }
+
+ function render(){
+  if(ready && duration){
+   smoothTime += (targetTime-smoothTime)*0.18;
+   if(Math.abs(smoothTime-video.currentTime)>.004){
+    try{video.currentTime=smoothTime}catch(e){}
+   }
+  }
+  requestAnimationFrame(render);
+ }
+
+ video.addEventListener("loadedmetadata",()=>{
+  duration=video.duration;
+  loadText.textContent="Decoding cinematic frames…";
+  video.currentTime=0;
+ });
+ video.addEventListener("canplay",()=>{
+  if(ready)return;
+  ready=true;
+  video.classList.add("ready");
+  loadText.textContent="Ready";
+  setTimeout(()=>{loader.style.opacity="0";setTimeout(()=>loader.remove(),450)},250);
+ });
+ video.addEventListener("error",()=>loadText.textContent="Could not load flow-pc.mp4");
+
+ gsap.registerPlugin(ScrollTrigger);
+
+ ScrollTrigger.create({
+  trigger:"#stage",
+  start:"top top",
+  end:"+=1200%",
+  pin:"#pin",
+  scrub:0.12,
+  invalidateOnRefresh:true,
+  onUpdate:self=>{
+   const p=self.progress;
+   targetTime=p*duration;
+   updateUI(p);
+  }
+ });
+
+ window.addEventListener("resize",()=>ScrollTrigger.refresh());
+ updateUI(0);
+ render();
+})();
+</script>
+</body>
+</html>
